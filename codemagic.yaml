@@ -39,37 +39,44 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          # macOS sed requires -i '' (empty backup extension)
+          python3 << 'PYEOF'
+          import glob, os
           
-          # Fix 1: React Native version catalog (ROOT CAUSE of Kotlin version)
-          find node_modules/react-native -name "libs.versions.toml" | while read f; do
-            echo "Fixing: $f"
-            sed -i '' "s/1\.9\.24/1.9.25/g" "$f"
-            grep -i kotlin "$f" | head -3
-          done
+          count = 0
+          # Replace 1.9.24 -> 1.9.25 in ALL relevant files
+          patterns = [
+              'node_modules/react-native/**/libs.versions.toml',
+              'node_modules/expo-modules-core/android/*.gradle',
+              'node_modules/expo-modules-core/android/*.gradle.kts',
+              'android/**/*.gradle',
+              'android/**/*.properties',
+              'android/**/*.toml',
+          ]
+          for pattern in patterns:
+              for fpath in glob.glob(pattern, recursive=True):
+                  with open(fpath, 'r') as f:
+                      content = f.read()
+                  if '1.9.24' in content:
+                      new_content = content.replace('1.9.24', '1.9.25')
+                      with open(fpath, 'w') as f:
+                          f.write(new_content)
+                      count += 1
+                      print(f'FIXED: {fpath}')
           
-          # Fix 2: expo-modules-core - add 1.9.25 mapping (keep 1.9.24 mapping too)
-          EXPO_PLUGIN="node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle"
-          EXPO_BUILD="node_modules/expo-modules-core/android/build.gradle"
-          if [ -f "$EXPO_PLUGIN" ]; then
-            sed -i '' 's/"1.9.24": "1.9.24-1.0.20"/"1.9.24": "1.9.24-1.0.20", "1.9.25": "1.9.25-1.0.20"/g' "$EXPO_PLUGIN"
-            echo "Patched ExpoModulesCorePlugin.gradle"
-          fi
-          if [ -f "$EXPO_BUILD" ]; then
-            sed -i '' 's/"1.9.24": "1.5.14"/"1.9.24": "1.5.14", "1.9.25": "1.5.15"/g' "$EXPO_BUILD"
-            echo "Patched expo-modules-core build.gradle"
-          fi
+          # Also add to gradle.properties
+          gp = 'android/gradle.properties'
+          with open(gp, 'a') as f:
+              f.write('\nandroid.kotlinVersion=1.9.25\n')
           
-          # Fix 3: android/ folder
-          find android -type f \( -name "*.gradle" -o -name "*.toml" -o -name "*.properties" \) | while read f; do
-            sed -i '' "s/1\.9\.24/1.9.25/g" "$f" 2>/dev/null
-          done
-          echo "android.kotlinVersion=1.9.25" >> android/gradle.properties
-          
-          # VERIFY
-          echo "=== VERIFY ==="
-          grep -r "kotlin" node_modules/react-native/gradle/libs.versions.toml 2>/dev/null | head -3
-          echo "DONE!"
+          # Verify
+          print(f'\nTotal files fixed: {count}')
+          for pattern in patterns:
+              for fpath in glob.glob(pattern, recursive=True):
+                  with open(fpath) as f:
+                      if '1.9.24' in f.read():
+                          print(f'WARNING STILL HAS 1.9.24: {fpath}')
+          print('VERIFICATION COMPLETE')
+          PYEOF
       
       - name: Generate release keystore
         script: |
