@@ -39,26 +39,37 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          # Fix 1: React Native version catalog (THIS IS THE ACTUAL SOURCE)
+          # macOS sed requires -i '' (empty backup extension)
+          
+          # Fix 1: React Native version catalog (ROOT CAUSE of Kotlin version)
           find node_modules/react-native -name "libs.versions.toml" | while read f; do
-            echo "Fixing RN version catalog: $f"
-            sed -i "s/1\.9\.24/1.9.25/g" "$f"
-            grep kotlin "$f"
+            echo "Fixing: $f"
+            sed -i '' "s/1\.9\.24/1.9.25/g" "$f"
+            grep -i kotlin "$f" | head -3
           done
           
-          # Fix 2: expo-modules-core gradle files
-          sed -i "s/1\.9\.24/1.9.25/g" node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle 2>/dev/null
-          sed -i "s/1\.9\.24/1.9.25/g" node_modules/expo-modules-core/android/build.gradle 2>/dev/null
+          # Fix 2: expo-modules-core - add 1.9.25 mapping (keep 1.9.24 mapping too)
+          EXPO_PLUGIN="node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle"
+          EXPO_BUILD="node_modules/expo-modules-core/android/build.gradle"
+          if [ -f "$EXPO_PLUGIN" ]; then
+            sed -i '' 's/"1.9.24": "1.9.24-1.0.20"/"1.9.24": "1.9.24-1.0.20", "1.9.25": "1.9.25-1.0.20"/g' "$EXPO_PLUGIN"
+            echo "Patched ExpoModulesCorePlugin.gradle"
+          fi
+          if [ -f "$EXPO_BUILD" ]; then
+            sed -i '' 's/"1.9.24": "1.5.14"/"1.9.24": "1.5.14", "1.9.25": "1.5.15"/g' "$EXPO_BUILD"
+            echo "Patched expo-modules-core build.gradle"
+          fi
           
           # Fix 3: android/ folder
-          grep -rl "1.9.24" android/ 2>/dev/null | xargs sed -i "s/1\.9\.24/1.9.25/g" 2>/dev/null
+          find android -type f \( -name "*.gradle" -o -name "*.toml" -o -name "*.properties" \) | while read f; do
+            sed -i '' "s/1\.9\.24/1.9.25/g" "$f" 2>/dev/null
+          done
           echo "android.kotlinVersion=1.9.25" >> android/gradle.properties
           
           # VERIFY
           echo "=== VERIFY ==="
-          grep -r "1.9.24" node_modules/react-native/gradle/ 2>/dev/null && echo "STILL IN RN!" || echo "RN CLEAN!"
-          grep -r "1.9.24" node_modules/expo-modules-core/android/ 2>/dev/null && echo "STILL IN EXPO!" || echo "EXPO CLEAN!"
-          grep -r "1.9.24" android/ 2>/dev/null && echo "STILL IN ANDROID!" || echo "ANDROID CLEAN!"
+          grep -r "kotlin" node_modules/react-native/gradle/libs.versions.toml 2>/dev/null | head -3
+          echo "DONE!"
       
       - name: Generate release keystore
         script: |
