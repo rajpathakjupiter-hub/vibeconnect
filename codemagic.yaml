@@ -39,27 +39,8 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          # ONLY fix the version catalog - nothing else!
-          python3 << 'PYEOF'
-          import glob
-          
-          # Fix ONLY libs.versions.toml (Kotlin version source)
-          for f in glob.glob('node_modules/react-native/**/libs.versions.toml', recursive=True):
-              with open(f) as fh:
-                  content = fh.read()
-              # Only replace the version definition line, not mapping tables
-              content = content.replace('kotlin = "1.9.24"', 'kotlin = "1.9.25"')
-              with open(f, 'w') as fh:
-                  fh.write(content)
-              print(f'Fixed: {f}')
-              # Verify
-              with open(f) as fh:
-                  for line in fh:
-                      if 'kotlin' in line.lower() and 'version' not in line.lower():
-                          print(f'  -> {line.strip()}')
-          
-          print('Done! Only version catalog modified.')
-          PYEOF
+          # Copy suppress script to android folder
+          cp suppress-kotlin-check.gradle android/
       
       - name: Generate release keystore
         script: |
@@ -105,7 +86,7 @@ workflows:
       - name: Build Release APK
         script: |
           cd android
-          ./gradlew app:assembleRelease -x lint --no-daemon
+          ./gradlew --init-script suppress-kotlin-check.gradle app:assembleRelease -x lint --no-daemon
     
     artifacts:
       - android/app/build/outputs/**/*.apk

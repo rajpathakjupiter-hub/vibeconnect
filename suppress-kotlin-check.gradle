@@ -1,0 +1,12 @@
+gradle.projectsEvaluated {
+    rootProject.allprojects { project ->
+        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                freeCompilerArgs += [
+                    "-P",
+                    "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24"
+                ]
+            }
+        }
+    }
+}
