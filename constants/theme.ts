@@ -1,0 +1,51 @@
+export const COLORS = {
+  bg: '#0B1121',
+  bgCard: '#131B2E',
+  bgCard2: '#1A2340',
+  surface: '#1E2A45',
+  primary: '#FF6B6B',
+  primaryDark: '#E85555',
+  accent: '#FFD93D',
+  teal: '#20B2AA',
+  green: '#22C55E',
+  greenDim: 'rgba(34,197,94,0.15)',
+  purple: '#A855F7',
+  blue: '#3B82F6',
+  textPrimary: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
+  border: 'rgba(255,255,255,0.08)',
+  borderLight: 'rgba(255,255,255,0.12)',
+  white: '#FFFFFF',
+  black: '#000000',
+  overlay: 'rgba(0,0,0,0.6)',
+  online: '#22C55E',
+  offline: '#64748B',
+  danger: '#EF4444',
+  gradient: {
+    primary: ['#FF6B6B', '#FF8E53'] as const,
+    teal: ['#20B2AA', '#2DD4BF'] as const,
+    purple: ['#A855F7', '#EC4899'] as const,
+    dark: ['#131B2E', '#0B1121'] as const,
+    gold: ['#FFD93D', '#F59E0B'] as const,
+  },
+};
+
+export const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+};
+
+export const RADIUS = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  full: 999,
+};

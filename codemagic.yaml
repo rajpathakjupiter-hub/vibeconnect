@@ -1,0 +1,111 @@
+workflows:
+  customer-android:
+    name: VibeConnect Customer APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    
+    environment:
+      vars:
+        EXPO_PUBLIC_API_URL: "http://193.181.209.130"
+        PACKAGE_NAME: "com.vibeconnect.customer"
+        KEY_ALIAS: "vibeconnect"
+        KEY_PASSWORD: "Vibe@2024"
+        STORE_PASSWORD: "Vibe@2024"
+      node: 20
+      java: 17
+    
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - node_modules
+    
+    scripts:
+      - name: Install dependencies
+        script: |
+          yarn install --ignore-engines
+      
+      - name: Set environment
+        script: |
+          echo "EXPO_PUBLIC_API_URL=http://193.181.209.130" > .env
+      
+      - name: Setup Android SDK
+        script: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "ndk;27.1.12297006" || sdkmanager "ndk;26.1.10909125" || echo "Using default NDK"
+      
+      - name: Prebuild Android
+        script: |
+          npx expo prebuild --platform android --clean
+      
+      - name: Generate release keystore
+        script: |
+          keytool -genkeypair -v \
+            -storetype PKCS12 \
+            -keystore android/app/vibeconnect-release.keystore \
+            -alias $KEY_ALIAS \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass $STORE_PASSWORD \
+            -keypass $KEY_PASSWORD \
+            -dname "CN=VibeConnect, OU=Mobile, O=VibeConnect, L=India, ST=India, C=IN"
+      
+      - name: Configure release signing
+        script: |
+          python3 <<'PYEOF'
+          import os, re
+          gradle_path = "android/app/build.gradle"
+          with open(gradle_path, "r") as f:
+              content = f.read()
+          store_pass = os.environ.get("STORE_PASSWORD", "Vibe@2024")
+          key_alias = os.environ.get("KEY_ALIAS", "vibeconnect")
+          key_pass = os.environ.get("KEY_PASSWORD", "Vibe@2024")
+          release_config = f'''
+            release {{
+                storeFile file("vibeconnect-release.keystore")
+                storePassword "{store_pass}"
+                keyAlias "{key_alias}"
+                keyPassword "{key_pass}"
+            }}'''
+          pattern = r'(signingConfigs\s*\{[^}]*debug\s*\{[^}]*\})'
+          match = re.search(pattern, content, re.DOTALL)
+          if match:
+              insert_pos = match.end()
+              content = content[:insert_pos] + release_config + content[insert_pos:]
+          content = content.replace("signingConfig signingConfigs.debug", "signingConfig signingConfigs.release")
+          with open(gradle_path, "w") as f:
+              f.write(content)
+          print("Release signing configured!")
+          PYEOF
+      
+      - name: Build Release APK
+        script: |
+          cd android
+          ./gradlew app:assembleRelease -x lint --no-daemon
+    
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+    
+    publishing:
+      email:
+        recipients:
+          - support@pay2hub.in
+        notify:
+          success: true
+          failure: true
+
+  host-android:
+    name: VibeConnect Host APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    
+    environment:
+      vars:
+        EXPO_PUBLIC_API_URL: "http://193.181.209.130"
+      node: 20
+      java: 17
+    
+    scripts:
+      - name: Placeholder
+        script: |
+          echo "Host app workflow - coming soon"
