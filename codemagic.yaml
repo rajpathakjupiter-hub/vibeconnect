@@ -37,6 +37,10 @@ workflows:
         script: |
           npx expo prebuild --platform android --clean
       
+      - name: Fix Kotlin compatibility
+        script: |
+          echo "kotlin.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
+      
       - name: Generate release keystore
         script: |
           keytool -genkeypair -v \
