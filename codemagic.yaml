@@ -39,7 +39,44 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
+          # Fix gradle.properties
           echo "kotlin.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
+          echo "android.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
+          
+          # Update Kotlin version in root build.gradle to 1.9.25
+          python3 <<'PYEOF'
+          import re
+          
+          # Fix root build.gradle - update kotlin version
+          root_gradle = "android/build.gradle"
+          with open(root_gradle, "r") as f:
+              content = f.read()
+          content = re.sub(
+              r"(ext\s*\{[^}]*kotlinVersion\s*=\s*['\"])[\d.]+(['\"])",
+              r"\g<1>1.9.25\2",
+              content
+          )
+          # Also try classpath pattern
+          content = re.sub(
+              r"(org\.jetbrains\.kotlin:kotlin-gradle-plugin:)[\d.]+",
+              r"\g<1>1.9.25",
+              content
+          )
+          with open(root_gradle, "w") as f:
+              f.write(content)
+          
+          # Also set in settings.gradle if exists  
+          import os
+          for f_path in ["android/settings.gradle", "android/settings.gradle.kts"]:
+              if os.path.exists(f_path):
+                  with open(f_path, "r") as f:
+                      c = f.read()
+                  c = re.sub(r'(kotlin.*version\s*["\'])[\d.]+', r'\g<1>1.9.25', c)
+                  with open(f_path, "w") as f:
+                      f.write(c)
+          
+          print("Kotlin version updated to 1.9.25!")
+          PYEOF
       
       - name: Generate release keystore
         script: |
