@@ -39,36 +39,8 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          # Method 1: Force replace ALL kotlin 1.9.24 to 1.9.25
-          find android -name "*.gradle" -o -name "*.gradle.kts" -o -name "*.properties" | xargs grep -l "1.9.24" 2>/dev/null | while read f; do
-            echo "Fixing: $f"
-            sed -i 's/1\.9\.24/1.9.25/g' "$f"
-          done
-          
-          # Method 2: Add suppress to gradle.properties
-          echo "kotlin.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
-          
-          # Method 3: Add Kotlin compiler suppress arg via Python
-          python3 -c "
-          gradle = 'android/build.gradle'
-          with open(gradle, 'r') as f:
-              c = f.read()
-          patch = '''
-          subprojects {
-              afterEvaluate {
-                  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                      kotlinOptions {
-                          freeCompilerArgs += [\"-P\", \"plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24\"]
-                      }
-                  }
-              }
-          }
-          '''
-          with open(gradle, 'a') as f:
-              f.write(patch)
-          print('Kotlin suppress arg added!')
-          "
-          echo "Kotlin fix applied!"
+          echo "android.kotlinVersion=1.9.25" >> android/gradle.properties
+          echo "Kotlin version set to 1.9.25 via gradle.properties!"
       
       - name: Generate release keystore
         script: |
