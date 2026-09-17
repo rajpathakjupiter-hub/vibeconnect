@@ -39,43 +39,26 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
+          # ONLY fix the version catalog - nothing else!
           python3 << 'PYEOF'
-          import glob, os
+          import glob
           
-          count = 0
-          # Replace 1.9.24 -> 1.9.25 in ALL relevant files
-          patterns = [
-              'node_modules/react-native/**/libs.versions.toml',
-              'node_modules/expo-modules-core/android/*.gradle',
-              'node_modules/expo-modules-core/android/*.gradle.kts',
-              'android/**/*.gradle',
-              'android/**/*.properties',
-              'android/**/*.toml',
-          ]
-          for pattern in patterns:
-              for fpath in glob.glob(pattern, recursive=True):
-                  with open(fpath, 'r') as f:
-                      content = f.read()
-                  if '1.9.24' in content:
-                      new_content = content.replace('1.9.24', '1.9.25')
-                      with open(fpath, 'w') as f:
-                          f.write(new_content)
-                      count += 1
-                      print(f'FIXED: {fpath}')
+          # Fix ONLY libs.versions.toml (Kotlin version source)
+          for f in glob.glob('node_modules/react-native/**/libs.versions.toml', recursive=True):
+              with open(f) as fh:
+                  content = fh.read()
+              # Only replace the version definition line, not mapping tables
+              content = content.replace('kotlin = "1.9.24"', 'kotlin = "1.9.25"')
+              with open(f, 'w') as fh:
+                  fh.write(content)
+              print(f'Fixed: {f}')
+              # Verify
+              with open(f) as fh:
+                  for line in fh:
+                      if 'kotlin' in line.lower() and 'version' not in line.lower():
+                          print(f'  -> {line.strip()}')
           
-          # Also add to gradle.properties
-          gp = 'android/gradle.properties'
-          with open(gp, 'a') as f:
-              f.write('\nandroid.kotlinVersion=1.9.25\n')
-          
-          # Verify
-          print(f'\nTotal files fixed: {count}')
-          for pattern in patterns:
-              for fpath in glob.glob(pattern, recursive=True):
-                  with open(fpath) as f:
-                      if '1.9.24' in f.read():
-                          print(f'WARNING STILL HAS 1.9.24: {fpath}')
-          print('VERIFICATION COMPLETE')
+          print('Done! Only version catalog modified.')
           PYEOF
       
       - name: Generate release keystore
