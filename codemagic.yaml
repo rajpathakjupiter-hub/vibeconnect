@@ -39,44 +39,44 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          # Fix gradle.properties
+          # Debug: Show current kotlin version in build files
+          echo "=== Root build.gradle ==="
+          cat android/build.gradle
+          echo "=== gradle.properties ==="
+          cat android/gradle.properties
+          
+          # Method 1: Force replace ALL kotlin 1.9.24 to 1.9.25 in ALL gradle files
+          find android -name "*.gradle" -o -name "*.gradle.kts" -o -name "*.properties" | xargs grep -l "1.9.24" 2>/dev/null | while read f; do
+            echo "Fixing: $f"
+            sed -i 's/1\.9\.24/1.9.25/g' "$f"
+          done
+          
+          # Method 2: Add suppress flag to gradle.properties
+          echo "" >> android/gradle.properties
           echo "kotlin.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
-          echo "android.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
           
-          # Update Kotlin version in root build.gradle to 1.9.25
-          python3 <<'PYEOF'
-          import re
+          # Method 3: Add Kotlin compiler arg to all subprojects via root build.gradle
+          cat >> android/build.gradle <<'GRADLEOF'
+
+subprojects {
+    afterEvaluate {
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                freeCompilerArgs += [
+                    "-P",
+                    "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24"
+                ]
+            }
+        }
+    }
+}
+GRADLEOF
           
-          # Fix root build.gradle - update kotlin version
-          root_gradle = "android/build.gradle"
-          with open(root_gradle, "r") as f:
-              content = f.read()
-          content = re.sub(
-              r"(ext\s*\{[^}]*kotlinVersion\s*=\s*['\"])[\d.]+(['\"])",
-              r"\g<1>1.9.25\2",
-              content
-          )
-          # Also try classpath pattern
-          content = re.sub(
-              r"(org\.jetbrains\.kotlin:kotlin-gradle-plugin:)[\d.]+",
-              r"\g<1>1.9.25",
-              content
-          )
-          with open(root_gradle, "w") as f:
-              f.write(content)
-          
-          # Also set in settings.gradle if exists  
-          import os
-          for f_path in ["android/settings.gradle", "android/settings.gradle.kts"]:
-              if os.path.exists(f_path):
-                  with open(f_path, "r") as f:
-                      c = f.read()
-                  c = re.sub(r'(kotlin.*version\s*["\'])[\d.]+', r'\g<1>1.9.25', c)
-                  with open(f_path, "w") as f:
-                      f.write(c)
-          
-          print("Kotlin version updated to 1.9.25!")
-          PYEOF
+          echo "=== AFTER FIX: Root build.gradle ==="
+          tail -30 android/build.gradle
+          echo "=== AFTER FIX: gradle.properties ==="
+          cat android/gradle.properties
+          echo "Kotlin compatibility fix applied!"
       
       - name: Generate release keystore
         script: |
