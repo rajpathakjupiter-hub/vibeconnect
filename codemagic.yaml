@@ -39,29 +39,26 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          echo "=== DEBUG: Files with 1.9.24 ==="
-          grep -rl "1.9.24" android/ || echo "None in android/"
-          echo "=== DEBUG: settings.gradle ==="
-          cat android/settings.gradle 2>/dev/null | head -40
-          echo "=== DEBUG: build.gradle top ==="
-          head -30 android/build.gradle
+          # Fix 1: React Native version catalog (THIS IS THE ACTUAL SOURCE)
+          find node_modules/react-native -name "libs.versions.toml" | while read f; do
+            echo "Fixing RN version catalog: $f"
+            sed -i "s/1\.9\.24/1.9.25/g" "$f"
+            grep kotlin "$f"
+          done
           
-          # AGGRESSIVE: Replace 1.9.24 in ALL android files
+          # Fix 2: expo-modules-core gradle files
+          sed -i "s/1\.9\.24/1.9.25/g" node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle 2>/dev/null
+          sed -i "s/1\.9\.24/1.9.25/g" node_modules/expo-modules-core/android/build.gradle 2>/dev/null
+          
+          # Fix 3: android/ folder
           grep -rl "1.9.24" android/ 2>/dev/null | xargs sed -i "s/1\.9\.24/1.9.25/g" 2>/dev/null
-          
-          # AGGRESSIVE: Replace in node_modules expo-modules-core
-          grep -rl "1.9.24" node_modules/expo-modules-core/ 2>/dev/null | xargs sed -i "s/1\.9\.24/1.9.25/g" 2>/dev/null
-          
-          # Also replace in ALL node_modules gradle files
-          find node_modules -name "build.gradle" -exec grep -l "1.9.24" {} \; 2>/dev/null | xargs sed -i "s/1\.9\.24/1.9.25/g" 2>/dev/null
-          
-          # gradle.properties backup
           echo "android.kotlinVersion=1.9.25" >> android/gradle.properties
           
           # VERIFY
-          echo "=== AFTER FIX: Any 1.9.24 left? ==="
-          grep -r "1.9.24" android/ 2>/dev/null && echo "STILL HAS 1.9.24!" || echo "CLEAN!"
-          grep -r "1.9.24" node_modules/expo-modules-core/android/ 2>/dev/null && echo "STILL IN NODE_MODULES!" || echo "NODE_MODULES CLEAN!"
+          echo "=== VERIFY ==="
+          grep -r "1.9.24" node_modules/react-native/gradle/ 2>/dev/null && echo "STILL IN RN!" || echo "RN CLEAN!"
+          grep -r "1.9.24" node_modules/expo-modules-core/android/ 2>/dev/null && echo "STILL IN EXPO!" || echo "EXPO CLEAN!"
+          grep -r "1.9.24" android/ 2>/dev/null && echo "STILL IN ANDROID!" || echo "ANDROID CLEAN!"
       
       - name: Generate release keystore
         script: |
