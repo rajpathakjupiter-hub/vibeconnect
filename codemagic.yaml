@@ -39,44 +39,36 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          # Debug: Show current kotlin version in build files
-          echo "=== Root build.gradle ==="
-          cat android/build.gradle
-          echo "=== gradle.properties ==="
-          cat android/gradle.properties
-          
-          # Method 1: Force replace ALL kotlin 1.9.24 to 1.9.25 in ALL gradle files
+          # Method 1: Force replace ALL kotlin 1.9.24 to 1.9.25
           find android -name "*.gradle" -o -name "*.gradle.kts" -o -name "*.properties" | xargs grep -l "1.9.24" 2>/dev/null | while read f; do
             echo "Fixing: $f"
             sed -i 's/1\.9\.24/1.9.25/g' "$f"
           done
           
-          # Method 2: Add suppress flag to gradle.properties
-          echo "" >> android/gradle.properties
+          # Method 2: Add suppress to gradle.properties
           echo "kotlin.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
           
-          # Method 3: Add Kotlin compiler arg to all subprojects via root build.gradle
-          cat >> android/build.gradle <<'GRADLEOF'
-
-subprojects {
-    afterEvaluate {
-        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            kotlinOptions {
-                freeCompilerArgs += [
-                    "-P",
-                    "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24"
-                ]
-            }
-        }
-    }
-}
-GRADLEOF
-          
-          echo "=== AFTER FIX: Root build.gradle ==="
-          tail -30 android/build.gradle
-          echo "=== AFTER FIX: gradle.properties ==="
-          cat android/gradle.properties
-          echo "Kotlin compatibility fix applied!"
+          # Method 3: Add Kotlin compiler suppress arg via Python
+          python3 -c "
+          gradle = 'android/build.gradle'
+          with open(gradle, 'r') as f:
+              c = f.read()
+          patch = '''
+          subprojects {
+              afterEvaluate {
+                  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                      kotlinOptions {
+                          freeCompilerArgs += [\"-P\", \"plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24\"]
+                      }
+                  }
+              }
+          }
+          '''
+          with open(gradle, 'a') as f:
+              f.write(patch)
+          print('Kotlin suppress arg added!')
+          "
+          echo "Kotlin fix applied!"
       
       - name: Generate release keystore
         script: |
