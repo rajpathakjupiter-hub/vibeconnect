@@ -39,8 +39,33 @@ workflows:
       
       - name: Fix Kotlin compatibility
         script: |
-          # Copy suppress script to android folder
-          cp suppress-kotlin-check.gradle android/
+          # Directly fix expo-modules-core to use Compose Compiler 1.5.14
+          python3 << 'PYEOF'
+          import glob
+          
+          for f in glob.glob('node_modules/expo-modules-core/android/build.gradle'):
+              with open(f) as fh:
+                  content = fh.read()
+              # Replace the dynamic versionsMap lookup with hardcoded 1.5.14
+              old = '''kotlinCompilerExtensionVersion = versionsMap[kotlinVersion()]'''
+              new = '''kotlinCompilerExtensionVersion = "1.5.14"'''
+              if old in content:
+                  content = content.replace(old, new)
+                  with open(f, 'w') as fh:
+                      fh.write(content)
+                  print(f'Fixed: hardcoded Compose Compiler to 1.5.14')
+              else:
+                  print(f'Pattern not found, trying alternate...')
+                  # Try without spaces
+                  content = content.replace(
+                      'kotlinCompilerExtensionVersion = versionsMap[kotlinVersion()]',
+                      'kotlinCompilerExtensionVersion = "1.5.14"'
+                  )
+                  with open(f, 'w') as fh:
+                      fh.write(content)
+          
+          print('Done!')
+          PYEOF
       
       - name: Generate release keystore
         script: |
@@ -86,7 +111,7 @@ workflows:
       - name: Build Release APK
         script: |
           cd android
-          ./gradlew --init-script suppress-kotlin-check.gradle app:assembleRelease -x lint --no-daemon
+          ./gradlew app:assembleRelease -x lint --no-daemon
     
     artifacts:
       - android/app/build/outputs/**/*.apk
