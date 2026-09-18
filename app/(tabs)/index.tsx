@@ -154,7 +154,11 @@ function HostCard({ host, index }: { host: Host; index: number }) {
         activeOpacity={0.85}
         onPress={() => router.push(`/host/${host.id}`)}
       >
-        <Image source={{ uri: host.photo }} style={styles.cardImage} />
+        <Image 
+          source={host.photo ? { uri: host.photo } : require('../../assets/images/icon.png')} 
+          style={styles.cardImage}
+          defaultSource={require('../../assets/images/icon.png')}
+        />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.85)']}
           style={styles.cardOverlay}

@@ -64,15 +64,22 @@ export default function SplashScreen() {
   };
 
   const handleConfirmAge = async () => {
-    await AsyncStorage.setItem('age_confirmed', 'true');
-    const deviceId = await getDeviceId();
     try {
-      const customer = await initCustomer({ device_id: deviceId });
-      await AsyncStorage.setItem('customer_id', customer.id);
-    } catch (e) {
-      // Already initialized, that's fine
+      await AsyncStorage.setItem('age_confirmed', 'true');
+      try {
+        const deviceId = await getDeviceId();
+        const customer = await initCustomer({ device_id: deviceId });
+        if (customer?.id) {
+          await AsyncStorage.setItem('customer_id', customer.id);
+        }
+      } catch (e) {
+        console.log('Init customer error (continuing):', e);
+      }
+      router.replace('/(tabs)');
+    } catch (err) {
+      console.log('Age confirm error:', err);
+      router.replace('/(tabs)');
     }
-    router.replace('/(tabs)');
   };
 
   return (
