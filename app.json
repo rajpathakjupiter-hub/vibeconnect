@@ -15,12 +15,22 @@
         "NSCameraUsageDescription": "VibeConnect needs camera access for video calls with hosts.",
         "NSMicrophoneUsageDescription": "VibeConnect needs microphone access for voice and video calls.",
         "NSPhotoLibraryUsageDescription": "Access photo library to share images in chats.",
-        "UIBackgroundModes": ["voip", "audio"]
+        "UIBackgroundModes": ["voip", "audio"],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "193.181.209.130": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        }
       }
     },
     "android": {
       "package": "com.vibeconnect.customer",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0B1121"
@@ -47,6 +57,15 @@
           "cameraPermission": "VibeConnect needs camera access for video calls with hosts.",
           "microphonePermission": "VibeConnect needs microphone access for voice and video calls.",
           "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "networkSecurityConfig": "./network_security_config.xml"
+          }
         }
       ]
     ],
