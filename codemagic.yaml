@@ -37,16 +37,28 @@ workflows:
         script: |
           npx expo prebuild --platform android --clean
       
+      - name: Fix Gradle version and settings
+        script: |
+          # Downgrade Gradle to 8.8 to fix "com.facebook.react.settings" plugin resolution
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.8-all.zip
+          networkTimeout=10000
+          validateDistributionUrl=true
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+          echo "Gradle wrapper updated to 8.8"
+          cat android/gradle/wrapper/gradle-wrapper.properties
+      
       - name: Fix Kotlin compatibility
         script: |
-          # Directly fix expo-modules-core to use Compose Compiler 1.5.14
           python3 << 'PYEOF'
           import glob
-          
           for f in glob.glob('node_modules/expo-modules-core/android/build.gradle'):
               with open(f) as fh:
                   content = fh.read()
-              # Replace the dynamic versionsMap lookup with hardcoded 1.5.14
               old = '''kotlinCompilerExtensionVersion = versionsMap[kotlinVersion()]'''
               new = '''kotlinCompilerExtensionVersion = "1.5.14"'''
               if old in content:
@@ -54,17 +66,7 @@ workflows:
                   with open(f, 'w') as fh:
                       fh.write(content)
                   print(f'Fixed: hardcoded Compose Compiler to 1.5.14')
-              else:
-                  print(f'Pattern not found, trying alternate...')
-                  # Try without spaces
-                  content = content.replace(
-                      'kotlinCompilerExtensionVersion = versionsMap[kotlinVersion()]',
-                      'kotlinCompilerExtensionVersion = "1.5.14"'
-                  )
-                  with open(f, 'w') as fh:
-                      fh.write(content)
-          
-          print('Done!')
+          print('Kotlin fix done!')
           PYEOF
       
       - name: Generate release keystore
@@ -111,7 +113,7 @@ workflows:
       - name: Build Release APK
         script: |
           cd android
-          ./gradlew app:assembleRelease -x lint --no-daemon
+          ./gradlew app:assembleRelease -x lint --no-daemon --stacktrace
     
     artifacts:
       - android/app/build/outputs/**/*.apk
